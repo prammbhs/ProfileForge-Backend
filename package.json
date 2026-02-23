@@ -1,8 +1,8 @@
 {
   "name": "uppebackend",
   "version": "1.0.0",
-  "description": "This is the backend for the United Professional Profile Engine project",
-  "main": "index.js",
+  "description": "This is the backend for the ProfileForge( a united professional profile engine) project",
+  "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
