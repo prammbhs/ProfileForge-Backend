@@ -28,8 +28,21 @@ const updateProfileData = async (userId, platform, platformData) => {
     return rows[0];
 };
 
+const getOutdatedProfiles = async (limit = 10) => {
+    // Fetch profiles where last_sync_at is older than 24 hours, ordered by the oldest first
+    const selectQuery = `
+        SELECT * FROM external_profiles 
+        WHERE last_sync_at < NOW() - INTERVAL '24 hours' 
+        ORDER BY last_sync_at ASC 
+        LIMIT $1;
+    `;
+    const { rows } = await pool.query(selectQuery, [limit]);
+    return rows;
+};
+
 module.exports = {
     addExternalProfile,
     getExternalProfile,
-    updateProfileData
+    updateProfileData,
+    getOutdatedProfiles
 };
