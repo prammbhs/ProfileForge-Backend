@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 const { generatePresignedUploadUrl } = require("../utils/s3");
-const { addCertificate, getUserCertificates, deleteCertificate } = require("../repositories/certificates.repository");
+const { addCertificate, getUserCertificates, deleteCertificate, updateCertificate } = require("../repositories/certificates.repository");
 
 const getPresignedUrlController = async (req, res) => {
     try {
@@ -86,9 +86,47 @@ const deleteCertificateController = async (req, res) => {
     }
 }
 
+const updateCertificateController = async (req, res) => {
+    try {
+        const userId = req.user.internalId;
+        const { id } = req.params;
+        const { title, issuer, issue_date, credential_url, fileKey, details } = req.body;
+
+        let file_url = null;
+        if (fileKey) {
+            const cloudfrontUrl = process.env.AWS_CLOUDFRONT_URL;
+            if (!cloudfrontUrl) {
+                return res.status(500).json({ error: "AWS_CLOUDFRONT_URL is not configured on the server." });
+            }
+            const sanitizedDomain = cloudfrontUrl.replace(/\/$/, "");
+            file_url = `${sanitizedDomain}/${fileKey}`;
+        }
+
+        const data = {
+            title,
+            issuer,
+            issue_date,
+            credential_url,
+            file_url,
+            details
+        };
+
+        const updatedCertificate = await updateCertificate(id, userId, data);
+        if (!updatedCertificate) {
+            return res.status(404).json({ error: "Certificate not found or unauthorized to update." });
+        }
+
+        res.status(200).json({ message: "Certificate updated successfully", certificate: updatedCertificate });
+    } catch (error) {
+        console.error("Update Certificate Error:", error);
+        res.status(500).json({ error: "Failed to update certificate metadata." });
+    }
+}
+
 module.exports = {
     getPresignedUrlController,
     addCertificateController,
     getUserCertificatesController,
-    deleteCertificateController
+    deleteCertificateController,
+    updateCertificateController
 };

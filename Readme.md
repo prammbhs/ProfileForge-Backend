@@ -73,5 +73,8 @@ Supports linking third-party platforms like GitHub, LeetCode, and Credly.
 - `POST /certificates`: Save a newly uploaded custom certificate's metadata and image URL to the database.
   - **Body**: `{ "title": "string", "issuer": "string?", "issue_date": "YYYY-MM-DD?", "credential_url": "URL string?", "fileKey": "string?", "details": "JSON object?" }`
 - `GET /certificates`: Fetch a list of all custom certificates added by the user.
+- `PUT /certificates/:id`: Update an existing custom certificate's details. All fields are optional.
+  - **Params**: `id` (UUID)
+  - **Body**: `{ "title": "string?", "issuer": "string?", "issue_date": "YYYY-MM-DD?", "credential_url": "URL string?", "fileKey": "string?", "details": "JSON object?" }`
 - `DELETE /certificates/:id`: Delete a specific custom certificate representing its ID.
   - **Params**: `id` (UUID)

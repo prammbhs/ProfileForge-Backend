@@ -44,8 +44,39 @@ const deleteCertificate = async (id, userId) => {
     return rows[0];
 };
 
+const updateCertificate = async (id, userId, data) => {
+    const { title, issuer, issue_date, credential_url, file_url, details } = data;
+
+    const updateQuery = `
+        UPDATE certificates 
+        SET 
+            title = COALESCE($3, title),
+            issuer = COALESCE($4, issuer),
+            issue_date = COALESCE($5, issue_date),
+            credential_url = COALESCE($6, credential_url),
+            file_url = COALESCE($7, file_url),
+            details = COALESCE($8, details)
+        WHERE id = $1 AND user_id = $2
+        RETURNING *;
+    `;
+    const values = [
+        id,
+        userId,
+        title || null,
+        issuer || null,
+        issue_date || null,
+        credential_url || null,
+        file_url || null,
+        details ? JSON.stringify(details) : null
+    ];
+
+    const { rows } = await pool.query(updateQuery, values);
+    return rows[0];
+};
+
 module.exports = {
     addCertificate,
     getUserCertificates,
-    deleteCertificate
+    deleteCertificate,
+    updateCertificate
 };

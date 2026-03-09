@@ -16,7 +16,10 @@ const presignSchema = z.object({
     fileExtension: z.string().regex(/^[a-zA-Z0-9]+$/, "Must be a valid file extension without dots (e.g. png)")
 }).strict();
 
+const updateCertificateSchema = certificateSchema.partial();
+
 module.exports = {
     certificateSchema,
-    presignSchema
+    presignSchema,
+    updateCertificateSchema
 };
