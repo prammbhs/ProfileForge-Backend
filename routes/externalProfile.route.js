@@ -9,7 +9,7 @@ const Authenticate = require("../middleware/auth.middleware");
 const router = express.Router();
 
 router.post("/add", Authenticate, addExternalProfileController);
-router.get("/:platform/:userId", Authenticate, getExternalProfileController);
+router.get("/:platform", Authenticate, getExternalProfileController);
 router.put("/update", Authenticate, updateProfileDataController);
 
 module.exports = router;

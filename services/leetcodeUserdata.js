@@ -1,4 +1,3 @@
-const fetch = require("node-fetch");
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -146,20 +145,20 @@ const getLeetcodeTopics = async (username) => {
     return data.matchedUser;
 };
 
-// Main aggregator orchestrator to maintain backward compatibility
 const getLeetcodeUserdata = async (username) => {
     try {
-        const profileData = await getLeetcodeProfile(username);
-        const badgesData = await getLeetcodeBadges(username);
-        const submissionsData = await getLeetcodeSubmissions(username);
-        const statsData = await getLeetcodeStats(username);
-        const topicsData = await getLeetcodeTopics(username);
+        const [profileData, badgesData, submissionsData, statsData, topicsData] = await Promise.all([
+            getLeetcodeProfile(username),
+            getLeetcodeBadges(username),
+            getLeetcodeSubmissions(username),
+            getLeetcodeStats(username),
+            getLeetcodeTopics(username)
+        ]);
 
         if (!profileData) {
             return null; // Username doesn't exist
         }
 
-        // Reconstruct the response roughly like the old monolithic query structure
         return {
             username: profileData.username,
             realName: profileData.profile?.realName,

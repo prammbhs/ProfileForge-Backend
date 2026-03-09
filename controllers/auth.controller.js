@@ -26,7 +26,7 @@ exports.login = async (req, res) => {
             }
         })
         const authResponse = await cognitoClient.send(command);
-        const { AccessToken, RefreshToken, ExpiresIn } = authResponse.AuthenticationResult;
+        const { AccessToken, RefreshToken } = authResponse.AuthenticationResult;
         const getUser = new GetUserCommand({
             AccessToken: AccessToken
         })

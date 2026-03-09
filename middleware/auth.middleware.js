@@ -1,3 +1,4 @@
+const { getUserByCognitoSub } = require("../repositories/users.repository");
 const jwt = require("jsonwebtoken");
 const jwksClient = require("jwks-rsa");
 
@@ -22,13 +23,23 @@ function Authenticate(req, res, next) {
     jwt.verify(token, getPublicKey,
         {
             issuer: `https://cognito-idp.${process.env.REGION}.amazonaws.com/${process.env.COGNITO_USER_POOL_ID}`,
-        }, (err, decoded) => {
+        }, async (err, decoded) => {
             if (err) {
                 console.log("Authentication error", err.name, err.message);
                 return res.status(401).json({ error: "Login to continue" });
             }
-            req.user = decoded;
-            next();
+            try {
+                const internalUser = await getUserByCognitoSub(decoded.sub);
+                if (!internalUser) {
+                    return res.status(401).json({ error: "User not found in system" });
+                }
+                decoded.internalId = internalUser.id;
+                req.user = decoded;
+                next();
+            } catch (dbError) {
+                console.error("Database error in auth middleware", dbError);
+                return res.status(500).json({ error: "Internal server error during authentication" });
+            }
         });
 }
 

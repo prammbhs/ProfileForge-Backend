@@ -1,77 +1,42 @@
 const { addExternalProfile, getExternalProfile, updateProfileData } = require("../repositories/externalProfile.repository");
-const { getGithubUserdata } = require("../services/githubUserdata");
-const { getGithubEvents } = require("../services/githubEvents");
-const { getLeetcodeUserdata } = require("../services/leetcodeUSerdata");
-const { getCredlyUserdata } = require("../services/credlyUserdata");
+const { fetchPlatformData, generateProfileUrl } = require("../services/externalProfile.service");
+const { profileSyncQueue } = require("../utils/queue");
 
-const { categorizeAndIngestPlatformData } = require("../services/ingestionService");
+const SUPPORTED_PLATFORMS = new Set(["github", "leetcode", "credly"]);
 
-const fetchPlatformData = async (platform, username) => {
-    switch (platform.toLowerCase()) {
-        case 'github':
-            const [githubData, githubEvents] = await Promise.all([
-                getGithubUserdata(username),
-                getGithubEvents(username)
-            ]);
-            return {
-                profile: githubData,
-                events: githubEvents || []
-            };
-        case 'leetcode':
-            return await getLeetcodeUserdata(username);
-        case 'credly':
-            
-            if (username.includes(',')) {
-                const usernames = username.split(',').map(u => u.trim());
-                const allData = await Promise.all(usernames.map(u => getCredlyUserdata(u)));
-
-                
-                let mergedData = [];
-                allData.forEach(result => {
-                    if (result && result.data && Array.isArray(result.data)) {
-                        mergedData = mergedData.concat(result.data);
-                    } else if (Array.isArray(result)) {
-                        mergedData = mergedData.concat(result);
-                    }
-                });
-                return { data: mergedData };
-            } else {
-                return await getCredlyUserdata(username);
-            }
-        // Add other platforms like codeforces here later
-        default:
-            throw new Error(`Unsupported platform: ${platform}`);
-    }
-};
-
-const generateProfileUrl = (platform, username) => {
-    const firstUsername = username.includes(',') ? username.split(',')[0].trim() : username;
-    switch (platform.toLowerCase()) {
-        case 'github':
-            return `https://github.com/${firstUsername}`;
-        case 'leetcode':
-            return `https://leetcode.com/u/${firstUsername}`;
-        case 'credly':
-            return `https://www.credly.com/users/${firstUsername}`;
-        default:
-            return '';
+const queueProfileFetchAndIngest = async (userId, externalProfileId, platform, username) => {
+    try {
+        await profileSyncQueue.add("fetch-profile", {
+            userId,
+            externalProfileId,
+            platform: platform.toLowerCase(),
+            username
+        });
+        console.log(`[Queue] Dispatched background fetch for ${platform}:${username}`);
+    } catch (error) {
+        console.error(`[Queue] Failed to dispatch job to BullMQ for ${platform}:${username}`, error.message);
     }
 };
 
 const addExternalProfileController = async (req, res) => {
     try {
-        const { userId, platform, username } = req.body;
-        if (!userId || !platform || !username) {
-            return res.status(400).json({ error: "userId, platform, and username are required" });
+        const { platform, username } = req.body;
+        if (!platform || !username) {
+            return res.status(400).json({ error: "platform and username are required" });
         }
 
-        // Fetch the raw data from the platform
-        const rawPlatformData = await fetchPlatformData(platform, username);
-        if (!rawPlatformData) {
-            return res.status(404).json({ error: `Could not fetch data for user ${username} on ${platform}` });
+        const userId = req.user.internalId;
+
+        if (!SUPPORTED_PLATFORMS.has(platform.toLowerCase())) {
+            return res.status(400).json({ error: `Unsupported platform: ${platform}` });
         }
 
-        // Generate profile URL
+        // Ensure the profile does not already exist
+        const existingProfile = await getExternalProfile(userId, platform.toLowerCase());
+        if (existingProfile) {
+            return res.status(409).json({ error: `You have already added a ${platform} profile.` });
+        }
+
         const profileUrl = generateProfileUrl(platform, username);
 
         // Save to DB first so we have an externalProfileId for FK inserts
@@ -80,12 +45,16 @@ const addExternalProfileController = async (req, res) => {
             platform.toLowerCase(),
             username,
             profileUrl,
-            rawPlatformData
+            {}
         );
 
-        // Run it through the categorization process
-        await categorizeAndIngestPlatformData(userId, externalProfile.id, platform, rawPlatformData);
-        res.status(201).json(externalProfile);
+        // Fetch and ingest in the background using BullMQ
+        await queueProfileFetchAndIngest(userId, externalProfile.id, platform, username);
+
+        res.status(202).json({
+            message: "Profile accepted and queued for ingestion",
+            externalProfile
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -93,8 +62,14 @@ const addExternalProfileController = async (req, res) => {
 
 const getExternalProfileController = async (req, res) => {
     try {
-        const { userId, platform } = req.params;
+        const { platform } = req.params;
+        const userId = req.user.internalId;
         const externalProfile = await getExternalProfile(userId, platform.toLowerCase());
+
+        if (!externalProfile) {
+            return res.status(404).json({ error: `You have not connected a ${platform} profile yet.` });
+        }
+
         res.status(200).json(externalProfile);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -104,7 +79,8 @@ const getExternalProfileController = async (req, res) => {
 const updateProfileDataController = async (req, res) => {
     try {
         // Here we can re-fetch and update manually if needed
-        const { userId, platform, username } = req.body;
+        const { platform, username } = req.body;
+        const userId = req.user.internalId;
 
         const rawPlatformData = await fetchPlatformData(platform, username);
         if (!rawPlatformData) {
@@ -112,10 +88,8 @@ const updateProfileDataController = async (req, res) => {
         }
 
         const existingProfile = await getExternalProfile(userId, platform.toLowerCase());
-        const externalProfileId = existingProfile ? existingProfile.id : null;
-        const categorizedData = await categorizeAndIngestPlatformData(userId, externalProfileId, platform, rawPlatformData);
 
-        const externalProfile = await updateProfileData(userId, platform.toLowerCase(), categorizedData);
+        const externalProfile = await updateProfileData(userId, platform.toLowerCase(), rawPlatformData);
         res.status(200).json(externalProfile);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -125,7 +99,5 @@ const updateProfileDataController = async (req, res) => {
 module.exports = {
     addExternalProfileController,
     getExternalProfileController,
-    updateProfileDataController,
-    categorizeAndIngestPlatformData,
-    fetchPlatformData
+    updateProfileDataController
 };

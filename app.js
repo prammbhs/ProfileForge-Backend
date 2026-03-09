@@ -20,7 +20,6 @@ app.get("/", (req, res) => {
 app.use("/api/v1", authRoutes);
 app.use("/api/v1", userRoutes);
 app.use("/api/v1/external-profile", require("./routes/externalProfile.route"));
-app.use("/api/v1", require("./routes/heatmap.route"));
 
 // ── Global Error Handler ──────────────────────────────────────────────────────
 app.use((err, req, res, next) => {

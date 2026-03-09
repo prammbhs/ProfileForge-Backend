@@ -1,4 +1,3 @@
-const fetch = require("node-fetch");
 
 const getGithubUserdata = async (username) => {
     try {
@@ -23,6 +22,7 @@ const getGithubUserdata = async (username) => {
             const repoResponse = await fetch(reposUrl, { headers });
 
             if (!repoResponse.ok) {
+                await repoResponse.text().catch(() => { });
                 if (allRepos.length > 0) break;
                 throw new Error("Failed to fetch github repo data");
             }
@@ -53,6 +53,9 @@ const getGithubUserdata = async (username) => {
                         }
                     });
                 }
+            } else {
+                // Drain socket to prevent native fetch from hanging
+                await commitResponse.text().catch(() => { });
             }
 
             return {
@@ -70,6 +73,7 @@ const getGithubUserdata = async (username) => {
 
         const followersResponse = await fetch(userData.followers_url, { headers });
         if (!followersResponse.ok) {
+            await followersResponse.text().catch(() => { });
             throw new Error("Failed to fetch github followers data");
         }
         const followersData = await followersResponse.json();

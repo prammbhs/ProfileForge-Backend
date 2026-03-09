@@ -1,9 +1,6 @@
 const cron = require('node-cron');
 const { getOutdatedProfiles, updateProfileData } = require('../repositories/externalProfile.repository');
-const { fetchPlatformData } = require('../controllers/externalProfile.controller');
-const { categorizeAndIngestPlatformData } = require('../services/ingestionService');
-
-// Delay helper to avoid rate limits
+const { fetchPlatformData } = require('../services/externalProfile.service');
 const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
 const startSyncService = () => {
@@ -29,15 +26,11 @@ const startSyncService = () => {
                 try {
                     console.log(`[Sync Service] Syncing profile for user ${profile.user_id} on ${profile.platform}...`);
 
-                    // Re-fetch raw data
                     const rawPlatformData = await fetchPlatformData(profile.platform, profile.username);
 
                     if (rawPlatformData) {
-                        // Re-categorize the data and ingest into the Timeline/Heatmap DB
-                        const categorizedData = await categorizeAndIngestPlatformData(profile.user_id, profile.id, profile.platform, rawPlatformData);
-
-                        // Update DB including last_sync_at
-                        await updateProfileData(profile.user_id, profile.platform, categorizedData);
+                        // Update DB including last_sync_at with raw data
+                        await updateProfileData(profile.user_id, profile.platform, rawPlatformData);
                         console.log(`[Sync Service] Successfully synced profile for user ${profile.user_id} on ${profile.platform}.`);
                     } else {
                         console.log(`[Sync Service] Failed to fetch data for user ${profile.user_id} on ${profile.platform}.`);
