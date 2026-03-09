@@ -19,6 +19,7 @@ app.get("/", (req, res) => {
 // ── Routes ──────────────────────────────────────────────────────────────────────
 app.use("/api/v1", authRoutes);
 app.use("/api/v1", userRoutes);
+app.use("/api/v1/certificates", require("./routes/certificates.route"));
 app.use("/api/v1/external-profile", require("./routes/externalProfile.route"));
 
 // ── Global Error Handler ──────────────────────────────────────────────────────
