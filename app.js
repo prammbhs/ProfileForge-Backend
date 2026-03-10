@@ -25,6 +25,7 @@ app.use("/api/v1", userRoutes);
 app.use("/api/v1/certificates", require("./routes/certificates.route"));
 app.use("/api/v1/external-profile", require("./routes/externalProfile.route"));
 app.use("/api/v1/codingStats", require("./routes/codingStats.route"));
+app.use("/api/v1/badges", require("./routes/badges.route"));
 app.use("/api/v1/keys", require("./routes/apiKeys.route"));
 app.use("/api/v1/projects", require("./routes/projects.route"));
 

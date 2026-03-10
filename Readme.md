@@ -67,7 +67,10 @@ Supports linking third-party platforms like GitHub, LeetCode, Codeforces, and Cr
   - **Body**: `{ "platform": "github|leetcode|credly|codeforces", "username": "string" }`
 
 ### Coding Stats Aggregator (`/codingStats`)
-- `GET /codingStats`: Fetch a mathematically unified aggregate of all competitive programming metrics (LeetCode + Codeforces), producing Total Solved, Easy/Medium/Hard subsets, and a combined array of Top Topics.
+- `GET /codingStats`: Fetch a mathematically unified aggregate of all competitive programming metrics (LeetCode + Codeforces), producing Total Solved, Easy/Medium/Hard subsets, and a combined array of Top Topics. (Cached in PostgreSQL for 12 hours).
+
+### Unified Badges API (`/badges`)
+- `GET /badges`: Fetch a mapping of all earned external badges (e.g., Credly AWS certifications). Includes names, issuer SVGs, detailed descriptions, and underlying skill tags. (Cached in PostgreSQL for 12 hours).
 
 ### Custom Certificates (`/certificates`)
 - `POST /certificates/presign`: Request an AWS S3 pre-signed URL to directly upload a certificate file (bypassing the server).
