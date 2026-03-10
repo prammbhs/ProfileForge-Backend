@@ -11,6 +11,9 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
 
+// ── Global Rate Limiter ───────────────────────────────────────────────────────
+app.use(require("./middleware/globalRateLimiter.middleware"));
+
 // ── Health Check ──────────────────────────────────────────────────────────────
 app.get("/", (req, res) => {
     res.json({ status: "ok", service: "ProfileForge API" });
@@ -21,6 +24,8 @@ app.use("/api/v1", authRoutes);
 app.use("/api/v1", userRoutes);
 app.use("/api/v1/certificates", require("./routes/certificates.route"));
 app.use("/api/v1/external-profile", require("./routes/externalProfile.route"));
+app.use("/api/v1/keys", require("./routes/apiKeys.route"));
+app.use("/api/v1/projects", require("./routes/projects.route"));
 
 // ── Global Error Handler ──────────────────────────────────────────────────────
 app.use((err, req, res, next) => {

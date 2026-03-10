@@ -1,4 +1,4 @@
-const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { S3Client, PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 
 const s3Client = new S3Client({
@@ -38,7 +38,33 @@ const generatePresignedUploadUrl = async (fileKey, contentType) => {
     };
 };
 
+const deleteFileFromS3 = async (fileUrl) => {
+    try {
+        const bucketName = process.env.AWS_S3_BUCKET_NAME;
+        const cloudfrontUrl = process.env.AWS_CLOUDFRONT_URL;
+
+        if (!bucketName || !cloudfrontUrl) return false;
+
+        const sanitizedDomain = cloudfrontUrl.replace(/\/$/, "");
+        if (!fileUrl.startsWith(sanitizedDomain)) return false;
+
+        const fileKey = fileUrl.replace(`${sanitizedDomain}/`, "");
+
+        const command = new DeleteObjectCommand({
+            Bucket: bucketName,
+            Key: decodeURIComponent(fileKey)
+        });
+
+        await s3Client.send(command);
+        return true;
+    } catch (error) {
+        console.error("Error deleting file from S3:", error);
+        return false;
+    }
+};
+
 module.exports = {
     s3Client,
-    generatePresignedUploadUrl
+    generatePresignedUploadUrl,
+    deleteFileFromS3
 };

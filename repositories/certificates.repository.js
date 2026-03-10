@@ -35,6 +35,15 @@ const getUserCertificates = async (userId) => {
     return rows;
 };
 
+const getCertificateById = async (id, userId) => {
+    const selectQuery = `
+        SELECT * FROM certificates WHERE id = $1 AND user_id = $2;
+    `;
+    const values = [id, userId];
+    const { rows } = await pool.query(selectQuery, values);
+    return rows[0];
+};
+
 const deleteCertificate = async (id, userId) => {
     const deleteQuery = `
         DELETE FROM certificates WHERE id = $1 AND user_id = $2 RETURNING *;
@@ -77,6 +86,7 @@ const updateCertificate = async (id, userId, data) => {
 module.exports = {
     addCertificate,
     getUserCertificates,
+    getCertificateById,
     deleteCertificate,
     updateCertificate
 };

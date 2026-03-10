@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const { generatePresignedUploadUrl } = require("../utils/s3");
-const { addCertificate, getUserCertificates, deleteCertificate, updateCertificate } = require("../repositories/certificates.repository");
+const { s3JobQueue } = require("../utils/queue");
+const { addCertificate, getUserCertificates, getCertificateById, deleteCertificate, updateCertificate } = require("../repositories/certificates.repository");
 
 const getPresignedUrlController = async (req, res) => {
     try {
@@ -80,6 +81,12 @@ const deleteCertificateController = async (req, res) => {
         if (!deleted) {
             return res.status(404).json({ error: "Certificate not found or unauthorized to delete." });
         }
+
+        // Also enqueue the file from S3 to be deleted asynchronously
+        if (deleted.file_url) {
+            s3JobQueue.add("deleteImage", { url: deleted.file_url }).catch(err => console.error("Could not enqueue S3 job:", err));
+        }
+
         res.status(200).json({ message: "Certificate deleted successfully", certificate: deleted });
     } catch (error) {
         res.status(500).json({ error: "Failed to delete certificate" });
@@ -92,6 +99,11 @@ const updateCertificateController = async (req, res) => {
         const { id } = req.params;
         const { title, issuer, issue_date, credential_url, fileKey, details } = req.body;
 
+        const oldCert = await getCertificateById(id, userId);
+        if (!oldCert) {
+            return res.status(404).json({ error: "Certificate not found or unauthorized to update." });
+        }
+
         let file_url = null;
         if (fileKey) {
             const cloudfrontUrl = process.env.AWS_CLOUDFRONT_URL;
@@ -100,6 +112,11 @@ const updateCertificateController = async (req, res) => {
             }
             const sanitizedDomain = cloudfrontUrl.replace(/\/$/, "");
             file_url = `${sanitizedDomain}/${fileKey}`;
+
+            // Queue the old file from S3 for deletion if a new file is replacing it
+            if (oldCert.file_url) {
+                s3JobQueue.add("deleteImage", { url: oldCert.file_url }).catch(err => console.error("Could not enqueue S3 old file job:", err));
+            }
         }
 
         const data = {

@@ -7,6 +7,7 @@ const port = process.env.PORT || 8000;
 
 // Initialize workers
 require("./workers/profileSync.worker");
+require("./workers/s3.worker");
 
 app.listen(port, async () => {
     console.log(`Server is running on http://localhost:${port}/`);

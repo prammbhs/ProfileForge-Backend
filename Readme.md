@@ -78,3 +78,18 @@ Supports linking third-party platforms like GitHub, LeetCode, and Credly.
   - **Body**: `{ "title": "string?", "issuer": "string?", "issue_date": "YYYY-MM-DD?", "credential_url": "URL string?", "fileKey": "string?", "details": "JSON object?" }`
 - `DELETE /certificates/:id`: Delete a specific custom certificate representing its ID.
   - **Params**: `id` (UUID)
+
+### API Keys & Quotas (`/keys`)
+- `POST /keys`: Generate a new read-only API Key (limit 5 per user).
+  - **Body**: `{ "name": "string?" }`
+- `GET /keys`: List all active API keys.
+- `DELETE /keys/:id`: Revoke an existing API key.
+- `GET /keys/quota`: Fetch current image and API rate limit usage.
+- `GET /keys/data`: Fetch the user's unified portfolio data (Projects, Certificates, External Profiles). **Requires `x-api-key` header.**
+
+### Projects CMS (`/projects`)
+- `GET /projects/:userId`: Fetch a user's portfolio projects (Requires `x-api-key` header).
+- `POST /projects/presign`: Request an S3 pre-signed URL for a project image.
+- `POST /projects`: Add a new project (Max 15 per user).
+- `PUT /projects/:id`: Update an existing project.
+- `DELETE /projects/:id`: Delete a project and automatically enqueue orphaned S3 images for background deletion via BullMQ.
