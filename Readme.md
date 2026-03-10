@@ -93,6 +93,8 @@ Supports linking third-party platforms like GitHub, LeetCode, Codeforces, and Cr
 - `GET /keys/quota`: Fetch current image and API rate limit usage.
 - `GET /keys/data`: Fetch the user's unified portfolio data (Projects, Certificates, External Profiles). **Requires `x-api-key` header.**
 
+> 📚 **Building a frontend?** [Read the comprehensive API Key Documentation here!](./API_Documentation.md)
+
 ### Projects CMS (`/projects`)
 - `GET /projects/:userId`: Fetch a user's portfolio projects (Requires `x-api-key` header).
 - `POST /projects/presign`: Request an S3 pre-signed URL for a project image.
