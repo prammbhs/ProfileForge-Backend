@@ -58,13 +58,16 @@ All endpoints are prefixed with `/api/v1`. Endpoints requiring authentication ex
 - `DELETE /profile/delete`: Permanently delete the user's account and all associated data.
 
 ### External Platform Integrations (`/external-profile`)
-Supports linking third-party platforms like GitHub, LeetCode, and Credly.
+Supports linking third-party platforms like GitHub, LeetCode, Codeforces, and Credly.
 - `POST /external-profile/add`: Link a new third-party platform profile to the user account.
-  - **Body**: `{ "platform": "github|leetcode|credly", "username": "string" }`
+  - **Body**: `{ "platform": "github|leetcode|credly|codeforces", "username": "string" }`
 - `GET /external-profile/:platform`: Fetch the synced profile and repository/badge data for a specific platform.
-  - **Params**: `platform` (e.g., `github`)
+  - **Params**: `platform` (e.g., `leetcode`)
 - `PUT /external-profile/update`: Trigger a manual re-sync for a connected external profile.
-  - **Body**: `{ "platform": "github|leetcode|credly", "username": "string" }`
+  - **Body**: `{ "platform": "github|leetcode|credly|codeforces", "username": "string" }`
+
+### Coding Stats Aggregator (`/codingStats`)
+- `GET /codingStats`: Fetch a mathematically unified aggregate of all competitive programming metrics (LeetCode + Codeforces), producing Total Solved, Easy/Medium/Hard subsets, and a combined array of Top Topics.
 
 ### Custom Certificates (`/certificates`)
 - `POST /certificates/presign`: Request an AWS S3 pre-signed URL to directly upload a certificate file (bypassing the server).

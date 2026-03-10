@@ -8,6 +8,7 @@ const { getQuotaByUserId } = require("../repositories/quotas.repository");
 const { getProjectsByUserId } = require("../repositories/projects.repository");
 const { getUserCertificates } = require("../repositories/certificates.repository");
 const { pool } = require("../utils/postgreClient");
+const { getPublicCodingStats } = require("../controllers/codingStats.controller");
 
 // Helper to generate an API key and its hash
 const generateKey = () => {
@@ -88,16 +89,18 @@ exports.getPortfolioDataController = async (req, res) => {
     try {
         const userId = req.user.internalId;
 
-        const [projects, certificates, { rows: externalProfiles }] = await Promise.all([
+        const [projects, certificates, { rows: externalProfiles }, codingStats] = await Promise.all([
             getProjectsByUserId(userId),
             getUserCertificates(userId),
-            pool.query('SELECT * FROM external_profiles WHERE user_id = $1', [userId])
+            pool.query('SELECT * FROM external_profiles WHERE user_id = $1', [userId]),
+            getPublicCodingStats(userId)
         ]);
 
         res.status(200).json({
             projects,
             certificates,
-            externalProfiles
+            externalProfiles,
+            codingStats
         });
     } catch (error) {
         console.error("Error fetching portfolio data", error);

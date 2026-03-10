@@ -1,6 +1,7 @@
 const { getGithubUserdata } = require("./githubUserdata");
 const { getLeetcodeUserdata } = require("./leetcodeUSerdata");
 const { getCredlyUserdata } = require("./credlyUserdata");
+const { getCodeforcesUserdata } = require("./codeforcesUserdata");
 
 const fetchPlatformData = async (platform, username) => {
     switch (platform.toLowerCase()) {
@@ -31,7 +32,8 @@ const fetchPlatformData = async (platform, username) => {
             } else {
                 return await getCredlyUserdata(username);
             }
-        // Add other platforms like codeforces here later
+        case 'codeforces':
+            return await getCodeforcesUserdata(username);
         default:
             throw new Error(`Unsupported platform: ${platform}`);
     }
@@ -46,6 +48,8 @@ const generateProfileUrl = (platform, username) => {
             return `https://leetcode.com/u/${firstUsername}`;
         case 'credly':
             return `https://www.credly.com/users/${firstUsername}`;
+        case 'codeforces':
+            return `https://codeforces.com/profile/${firstUsername}`;
         default:
             return '';
     }

@@ -2,7 +2,7 @@ const { addExternalProfile, getExternalProfile, updateProfileData } = require(".
 const { fetchPlatformData, generateProfileUrl } = require("../services/externalProfile.service");
 const { profileSyncQueue } = require("../utils/queue");
 
-const SUPPORTED_PLATFORMS = new Set(["github", "leetcode", "credly"]);
+const SUPPORTED_PLATFORMS = new Set(["github", "leetcode", "credly", "codeforces"]);
 
 const queueProfileFetchAndIngest = async (userId, externalProfileId, platform, username) => {
     try {
