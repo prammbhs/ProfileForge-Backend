@@ -4,6 +4,7 @@ const cookieParser = require("cookie-parser");
 const authRoutes = require("./routes/auth.route");
 const userRoutes = require("./routes/user.route");
 const app = express();
+app.set("trust proxy", 1); // Trust the first proxy (Nginx) to get correct client IPs
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(cors({ origin: process.env.FRONTEND_URL || "http://localhost:5173", credentials: true }));
