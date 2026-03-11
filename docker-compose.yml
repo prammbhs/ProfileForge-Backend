@@ -8,7 +8,7 @@ services:
     container_name: profileforge-backend
     restart: unless-stopped
     ports:
-      - "${PORT:-8000}:${PORT:-8000}"
+      - "127.0.0.1:8000:8000"
     env_file:
       - .env
     # We specify environment variables explicitly if we want to document them, 
