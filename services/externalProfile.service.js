@@ -1,5 +1,5 @@
 const { getGithubUserdata } = require("./githubUserdata");
-const { getLeetcodeUserdata } = require("./leetcodeUSerdata");
+const { getLeetcodeUserdata } = require("./leetcodeUserdata");
 const { getCredlyUserdata } = require("./credlyUserdata");
 const { getCodeforcesUserdata } = require("./codeforcesUserdata");
 
