@@ -11,7 +11,7 @@ const { pool } = require("../utils/postgreClient");
 const { getPublicCodingStats } = require("../controllers/codingStats.controller");
 const { getPublicBadges } = require("../controllers/badges.controller");
 
-// Helper to generate an API key and its hash
+// Helper to generate an API key and its hashs
 const generateKey = () => {
     const rawKey = crypto.randomBytes(32).toString('hex');
     const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
