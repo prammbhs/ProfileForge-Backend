@@ -50,13 +50,13 @@ exports.login = async (req, res) => {
                 httpOnly: true,
                 secure: true,
                 sameSite: "none",
-                maxAge: 60 * 60
+                maxAge: 60 * 60 * 1000 // 1 hour in ms
             })
             .cookie("refreshToken", RefreshToken, {
                 httpOnly: true,
                 secure: true,
                 sameSite: "none",
-                maxAge: 60 * 60 * 24 * 5
+                maxAge: 60 * 60 * 24 * 5 * 1000 // 5 days in ms
             })
             .json({
                 message: "Login successful",
