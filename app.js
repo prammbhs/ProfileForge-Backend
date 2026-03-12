@@ -8,7 +8,7 @@ app.set("trust proxy", 1); // Trust the first proxy (Nginx) to get correct clien
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(cors({
-    origin: [process.env.FRONTEND_URL],
+    origin: [process.env.FRONTEND_URL, "https://profileforge.duckdns.org", "http://localhost:5173"],
     credentials: true
 }));
 app.use(express.json({ limit: "10mb" }));
