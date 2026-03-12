@@ -48,14 +48,14 @@ exports.login = async (req, res) => {
         res
             .cookie("accessToken", AccessToken, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                sameSite: "strict",
+                secure: true,
+                sameSite: "none",
                 maxAge: 60 * 60
             })
             .cookie("refreshToken", RefreshToken, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                sameSite: "strict",
+                secure: true,
+                sameSite: "none",
                 maxAge: 60 * 60 * 24 * 5
             })
             .json({
@@ -84,8 +84,8 @@ exports.logout = async (req, res) => {
             AccessToken: token
         });
         await cognitoClient.send(command);
-        res.clearCookie("accessToken");
-        res.clearCookie("refreshToken");
+        res.clearCookie("accessToken", { sameSite: "none", secure: true });
+        res.clearCookie("refreshToken", { sameSite: "none", secure: true });
         res.json({ message: "Logout successful" });
     } catch (error) {
         console.log("cognito logout error", error.name, error.message);
