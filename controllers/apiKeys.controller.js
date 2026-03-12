@@ -22,6 +22,7 @@ exports.generateApiKeyController = async (req, res) => {
     try {
         const userId = req.user.internalId;
         const { name } = req.body;
+        const keyName = name || "Default Key";
 
         // Ensure user hasn't exceeded a sensible limit of API keys (e.g. 5)
         const existingKeys = await getKeysByUserId(userId);
@@ -29,8 +30,14 @@ exports.generateApiKeyController = async (req, res) => {
             return res.status(403).json({ error: "Maximum number of API keys reached. Revoke an existing key to generate a new one." });
         }
 
+        // Prevent duplicate key names
+        const duplicateName = existingKeys.find(k => k.name.toLowerCase() === keyName.toLowerCase());
+        if (duplicateName) {
+            return res.status(409).json({ error: `An API key with the name "${keyName}" already exists. Please choose a different name.` });
+        }
+
         const { rawKey, keyHash } = generateKey();
-        const keyData = await createApiKey(userId, keyHash, name || "Default Key");
+        const keyData = await createApiKey(userId, keyHash, keyName);
 
         res.status(201).json({
             message: "API Key generated successfully. Make sure to copy it now, as you won't be able to see it again.",
@@ -107,6 +114,67 @@ exports.getPortfolioDataController = async (req, res) => {
         });
     } catch (error) {
         console.error("Error fetching portfolio data", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+// Granular Endpoints for API Keys
+
+exports.getProjectsAPI = async (req, res) => {
+    try {
+        const userId = req.user.internalId;
+        const projects = await getProjectsByUserId(userId);
+        res.status(200).json(projects);
+    } catch (error) {
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+exports.getStatsAPI = async (req, res) => {
+    try {
+        const userId = req.user.internalId;
+        const stats = await getPublicCodingStats(userId);
+        res.status(200).json(stats);
+    } catch (error) {
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+exports.getCertificatesAPI = async (req, res) => {
+    try {
+        const userId = req.user.internalId;
+        const certificates = await getUserCertificates(userId);
+        res.status(200).json(certificates);
+    } catch (error) {
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+exports.getBadgesAPI = async (req, res) => {
+    try {
+        const userId = req.user.internalId;
+        const badges = await getPublicBadges(userId);
+        res.status(200).json(badges);
+    } catch (error) {
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+exports.getPlatformDataAPI = async (req, res) => {
+    try {
+        const userId = req.user.internalId;
+        const { platform } = req.params;
+        const { rows } = await pool.query(
+            'SELECT platform, username, profile_url, platform_data, last_sync_at FROM external_profiles WHERE user_id = $1 AND platform = $2',
+            [userId, platform.toLowerCase()]
+        );
+        
+        if (rows.length === 0) {
+            return res.status(404).json({ error: `No ${platform} profile found for this user.` });
+        }
+        
+        res.status(200).json(rows[0]);
+    } catch (error) {
         res.status(500).json({ error: "Internal server error" });
     }
 };

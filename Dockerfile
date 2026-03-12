@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm install --omit=dev
 
 # Copy the rest of the application files
 COPY . .
@@ -15,5 +15,5 @@ COPY . .
 # Expose the port from .env or default to 8000
 EXPOSE 8000
 
-# Start the Node.js process using server.js
-CMD ["npm", "start"]
+# Limit V8 heap to 512MB to prevent container OOM kills
+CMD ["node", "--max-old-space-size=512", "server.js"]

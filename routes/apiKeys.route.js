@@ -5,7 +5,12 @@ const {
     getApiKeysController,
     revokeApiKeyController,
     getQuotaController,
-    getPortfolioDataController
+    getPortfolioDataController,
+    getProjectsAPI,
+    getStatsAPI,
+    getCertificatesAPI,
+    getBadgesAPI,
+    getPlatformDataAPI
 } = require("../controllers/apiKeys.controller");
 const apiKeyAuth = require("../middleware/apiKeyAuth.middleware");
 
@@ -16,7 +21,12 @@ router.get("/", Authenticate, getApiKeysController);
 router.delete("/:id", Authenticate, revokeApiKeyController);
 router.get("/quota", Authenticate, getQuotaController);
 
-// API Key authenticated route to get unified user data
-router.get("/data", apiKeyAuth, getPortfolioDataController);
+// API Key authenticated routes
+router.get("/data", apiKeyAuth, getPortfolioDataController); // Unified endpoint
+router.get("/projects", apiKeyAuth, getProjectsAPI);
+router.get("/stats", apiKeyAuth, getStatsAPI);
+router.get("/certificates", apiKeyAuth, getCertificatesAPI);
+router.get("/badges", apiKeyAuth, getBadgesAPI);
+router.get("/platforms/:platform", apiKeyAuth, getPlatformDataAPI);
 
 module.exports = router;

@@ -1,18 +1,37 @@
 const crypto = require("crypto");
-const { generatePresignedUploadUrl } = require("../utils/s3");
-const { s3JobQueue } = require("../utils/queue");
+const { generatePresignedUploadUrl, deleteFileFromS3 } = require("../utils/s3");
 const { addCertificate, getUserCertificates, getCertificateById, deleteCertificate, updateCertificate } = require("../repositories/certificates.repository");
+const { enqueueJob, QUEUE_URL } = require("../utils/sqsClient");
+
+/**
+ * Delete an S3 file via SQS (preferred) or setImmediate (fallback for local dev).
+ */
+const backgroundDeleteS3 = (url) => {
+    if (QUEUE_URL) {
+        enqueueJob("s3-delete", { url }).catch(err =>
+            console.error("[S3 Cleanup] Failed to enqueue:", err.message)
+        );
+    } else {
+        setImmediate(async () => {
+            try {
+                const success = await deleteFileFromS3(url);
+                console.log(success ? `[S3 Cleanup] Deleted: ${url}` : `[S3 Cleanup] Could not delete: ${url}`);
+            } catch (err) {
+                console.error(`[S3 Cleanup] Error: ${err.message}`);
+            }
+        });
+    }
+};
 
 const getPresignedUrlController = async (req, res) => {
     try {
         const userId = req.user.internalId;
-        const { contentType, fileExtension } = req.body; // e.g., 'image/png', 'png'
+        const { contentType, fileExtension } = req.body;
 
         if (!contentType || !fileExtension) {
             return res.status(400).json({ error: "contentType and fileExtension are required" });
         }
 
-        // Generate a random UUID-like key for the file to prevent collisions
         const randomHash = crypto.randomBytes(16).toString("hex");
         const fileKey = `certificates/${userId}/${randomHash}.${fileExtension}`;
 
@@ -40,19 +59,11 @@ const addCertificateController = async (req, res) => {
             if (!cloudfrontUrl) {
                 return res.status(500).json({ error: "AWS_CLOUDFRONT_URL is not configured on the server." });
             }
-            // Ensure it ends with a slash if not provided, or simply construct it safely
             const sanitizedDomain = cloudfrontUrl.replace(/\/$/, "");
             file_url = `${sanitizedDomain}/${fileKey}`;
         }
 
-        const data = {
-            title,
-            issuer,
-            issue_date,
-            credential_url,
-            file_url,
-            details
-        };
+        const data = { title, issuer, issue_date, credential_url, file_url, details };
 
         const newCertificate = await addCertificate(userId, data);
         res.status(201).json({ message: "Certificate saved successfully", certificate: newCertificate });
@@ -82,9 +93,8 @@ const deleteCertificateController = async (req, res) => {
             return res.status(404).json({ error: "Certificate not found or unauthorized to delete." });
         }
 
-        // Also enqueue the file from S3 to be deleted asynchronously
         if (deleted.file_url) {
-            s3JobQueue.add("deleteImage", { url: deleted.file_url }).catch(err => console.error("Could not enqueue S3 job:", err));
+            backgroundDeleteS3(deleted.file_url);
         }
 
         res.status(200).json({ message: "Certificate deleted successfully", certificate: deleted });
@@ -113,20 +123,12 @@ const updateCertificateController = async (req, res) => {
             const sanitizedDomain = cloudfrontUrl.replace(/\/$/, "");
             file_url = `${sanitizedDomain}/${fileKey}`;
 
-            // Queue the old file from S3 for deletion if a new file is replacing it
             if (oldCert.file_url) {
-                s3JobQueue.add("deleteImage", { url: oldCert.file_url }).catch(err => console.error("Could not enqueue S3 old file job:", err));
+                backgroundDeleteS3(oldCert.file_url);
             }
         }
 
-        const data = {
-            title,
-            issuer,
-            issue_date,
-            credential_url,
-            file_url,
-            details
-        };
+        const data = { title, issuer, issue_date, credential_url, file_url, details };
 
         const updatedCertificate = await updateCertificate(id, userId, data);
         if (!updatedCertificate) {

@@ -6,8 +6,8 @@ const delay = (ms) => new Promise(res => setTimeout(res, ms));
 const startSyncService = () => {
     console.log("Starting External Profile Sync Service...");
 
-    // Run every 10 minutes to check for outdated profiles
-    cron.schedule('*/10 * * * *', async () => {
+    // Run every 6 hours to check for outdated profiles
+    cron.schedule('0 */6 * * *', async () => {
         try {
             console.log("[Sync Service] Checking for outdated external profiles...");
 

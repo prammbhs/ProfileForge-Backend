@@ -45,17 +45,26 @@ exports.login = async (req, res) => {
             });
             user = await getUserByCognitoSub(attributes.sub);
         }
+
+        // ── Phase 2: Cache Priming ────────────────────────────────
+        // Pre-warm the cache so the parallel dashboard requests hit L1/L2
+        const { authCache } = require("../utils/lruCache");
+        const { getRedisClient } = require("../utils/redisClient");
+        const redis = getRedisClient();
+        
+        authCache.set(attributes.sub, user.id); // Prime L1
+        redis.setex(`auth_sub:${attributes.sub}`, 86400, user.id).catch(() => {}); // Prime L2
         res
             .cookie("accessToken", AccessToken, {
                 httpOnly: true,
-                secure: true,
-                sameSite: "none",
+                secure: false, // Changed for local dev
+                sameSite: "lax", // Changed for local dev
                 maxAge: 60 * 60 * 1000 // 1 hour in ms
             })
             .cookie("refreshToken", RefreshToken, {
                 httpOnly: true,
-                secure: true,
-                sameSite: "none",
+                secure: false, // Changed for local dev
+                sameSite: "lax", // Changed for local dev
                 maxAge: 60 * 60 * 24 * 5 * 1000 // 5 days in ms
             })
             .json({
@@ -84,8 +93,8 @@ exports.logout = async (req, res) => {
             AccessToken: token
         });
         await cognitoClient.send(command);
-        res.clearCookie("accessToken", { sameSite: "none", secure: true });
-        res.clearCookie("refreshToken", { sameSite: "none", secure: true });
+        res.clearCookie("accessToken", { sameSite: "lax", secure: false });
+        res.clearCookie("refreshToken", { sameSite: "lax", secure: false });
         res.json({ message: "Logout successful" });
     } catch (error) {
         console.log("cognito logout error", error.name, error.message);

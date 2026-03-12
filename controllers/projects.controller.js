@@ -1,6 +1,5 @@
 const crypto = require("crypto");
-const { generatePresignedUploadUrl } = require("../utils/s3");
-const { s3JobQueue } = require("../utils/queue");
+const { generatePresignedUploadUrl, deleteFileFromS3 } = require("../utils/s3");
 const {
     addProject,
     getProjectsByUserId,
@@ -9,25 +8,67 @@ const {
     deleteProject
 } = require("../repositories/projects.repository");
 const { getQuotaByUserId, adjustImageUsage } = require("../repositories/quotas.repository");
-const Redis = require("ioredis");
+const { getRedisClient } = require("../utils/redisClient");
+const { quotaCache } = require("../utils/lruCache");
+const { enqueueJob, QUEUE_URL } = require("../utils/sqsClient");
 
-const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
+const redis = getRedisClient();
+
+/**
+ * Delete an S3 file via SQS (preferred) or setImmediate (fallback for local dev).
+ */
+const backgroundDeleteS3 = (url) => {
+    if (QUEUE_URL) {
+        enqueueJob("s3-delete", { url }).catch(err =>
+            console.error("[S3 Cleanup] Failed to enqueue:", err.message)
+        );
+    } else {
+        // Fallback for local dev without SQS
+        setImmediate(async () => {
+            try {
+                const success = await deleteFileFromS3(url);
+                console.log(success ? `[S3 Cleanup] Deleted: ${url}` : `[S3 Cleanup] Could not delete: ${url}`);
+            } catch (err) {
+                console.error(`[S3 Cleanup] Error: ${err.message}`);
+            }
+        });
+    }
+};
 
 const getCachedQuota = async (userId) => {
+    // ── L1: LRU (0 Redis commands) ────────────────────────────
+    const lruResult = quotaCache.get(userId);
+    if (lruResult) return lruResult;
+
     const cacheKey = `user_quota:${userId}`;
-    let cachedQuota = await redis.get(cacheKey);
-    if (cachedQuota) {
-        return JSON.parse(cachedQuota);
-    }
+
+    // ── L2: Redis (1 command on LRU miss) ─────────────────────
+    try {
+        if (redis.status === "ready") {
+            const cachedQuota = await Promise.race([
+                redis.get(cacheKey),
+                new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 2000))
+            ]);
+            if (cachedQuota) {
+                const parsed = JSON.parse(cachedQuota);
+                quotaCache.set(userId, parsed); // Populate L1
+                return parsed;
+            }
+        }
+    } catch { /* Redis unavailable */ }
+
+    // ── L3: PostgreSQL ────────────────────────────────────────
     const quota = await getQuotaByUserId(userId);
     if (quota) {
-        await redis.setex(cacheKey, 3600, JSON.stringify(quota));
+        quotaCache.set(userId, quota); // Populate L1
+        redis.setex(cacheKey, 3600, JSON.stringify(quota)).catch(() => {}); // Populate L2
     }
     return quota;
 };
 
 const invalidateQuotaCache = async (userId) => {
-    await redis.del(`user_quota:${userId}`);
+    quotaCache.delete(userId); // Clear L1
+    redis.del(`user_quota:${userId}`).catch(() => {}); // Clear L2
 };
 
 const getS3ImageCount = (links = []) => {
@@ -55,7 +96,10 @@ exports.getProjectPresignedUrlController = async (req, res) => {
         const fileKey = `projects/${userId}/${randomHash}.${fileExtension}`;
         const uploadData = await generatePresignedUploadUrl(fileKey, contentType);
 
-        res.status(200).json(uploadData);
+        const cloudfrontUrl = (process.env.AWS_CLOUDFRONT_URL || '').replace(/\/$/, '');
+        const publicUrl = cloudfrontUrl ? `${cloudfrontUrl}/${fileKey}` : null;
+
+        res.status(200).json({ ...uploadData, publicUrl });
     } catch (error) {
         console.error("Presigned URL Error:", error);
         res.status(500).json({ error: "Could not generate presigned URL." });
@@ -95,7 +139,6 @@ exports.addProjectController = async (req, res) => {
 
 exports.getProjectsController = async (req, res) => {
     try {
-        // This is a public read endpoint, so userId comes from params
         const { userId } = req.params;
         const projects = await getProjectsByUserId(userId);
         res.status(200).json(projects);
@@ -129,11 +172,11 @@ exports.updateProjectController = async (req, res) => {
             }
         }
 
-        // Queue images from S3 that are no longer in the array
+        // Delete removed S3 images in the background — non-blocking, no Redis
         const removedImages = oldS3Images.filter(oldLink => !newS3Images.includes(oldLink));
         for (const link of removedImages) {
             if (getS3ImageCount([link]) > 0) {
-                s3JobQueue.add("deleteImage", { url: link }).catch(err => console.error("Could not enqueue orphaned file from S3:", err));
+                backgroundDeleteS3(link);
             }
         }
 
@@ -163,10 +206,11 @@ exports.deleteProjectController = async (req, res) => {
 
         const s3ImagesCount = getS3ImageCount(deleted.image_links);
 
+        // Delete S3 images in the background — non-blocking, no Redis
         if (deleted.image_links && deleted.image_links.length > 0) {
             for (const link of deleted.image_links) {
                 if (getS3ImageCount([link]) > 0) {
-                    s3JobQueue.add("deleteImage", { url: link }).catch(err => console.error("Could not enqueue from S3:", err));
+                    backgroundDeleteS3(link);
                 }
             }
         }
