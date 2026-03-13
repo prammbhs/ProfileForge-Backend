@@ -19,11 +19,11 @@ app.use(cors({
     origin: (origin, callback) => {
         // Allow requests with no origin (like mobile apps or curl)
         if (!origin) return callback(null, true);
-        
+
         const normalizedOrigin = origin.replace(/\/$/, "");
         const isVercel = /\.vercel\.app$/.test(normalizedOrigin);
         const isDuckDns = /\.duckdns\.org$/.test(normalizedOrigin);
-        
+
         if (allowedOrigins.includes(normalizedOrigin) || isVercel || isDuckDns) {
             callback(null, true);
         } else {

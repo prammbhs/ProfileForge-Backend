@@ -1,6 +1,8 @@
 const { addExternalProfile, getExternalProfile, updateProfileData } = require("../repositories/externalProfile.repository");
 const { fetchPlatformData, generateProfileUrl } = require("../services/externalProfile.service");
 const { enqueueJob, QUEUE_URL } = require("../utils/sqsClient");
+const { getOrComputeStats } = require("./codingStats.controller");
+const { getOrComputeBadges } = require("./badges.controller");
 
 const SUPPORTED_PLATFORMS = new Set(["github", "leetcode", "credly", "codeforces"]);
 
@@ -19,6 +21,11 @@ const backgroundFetchAndIngest = (userId, platform, username) => {
                 const rawPlatformData = await fetchPlatformData(platform, username);
                 if (rawPlatformData) {
                     await updateProfileData(userId, platform.toLowerCase(), rawPlatformData);
+                    // Proactively compute stats and badges (force refresh since profile data just updated)
+                    await Promise.all([
+                        getOrComputeStats(userId, true).catch(e => console.error("[Background] Stats compute error:", e.message)),
+                        getOrComputeBadges(userId, true).catch(e => console.error("[Background] Badges compute error:", e.message))
+                    ]);
                     console.log(`[Background] Successfully synced ${platform}:${username}`);
                 } else {
                     console.warn(`[Background] No data returned for ${platform}:${username}`);
@@ -96,6 +103,13 @@ const updateProfileDataController = async (req, res) => {
         }
 
         const externalProfile = await updateProfileData(userId, platform.toLowerCase(), rawPlatformData);
+        
+        // Proactively compute stats and badges (force refresh since profile data just updated)
+        await Promise.all([
+            getOrComputeStats(userId, true).catch(e => console.error("[Manual Refresh] Stats compute error:", e.message)),
+            getOrComputeBadges(userId, true).catch(e => console.error("[Manual Refresh] Badges compute error:", e.message))
+        ]);
+
         res.status(200).json(externalProfile);
     } catch (error) {
         res.status(500).json({ error: error.message });

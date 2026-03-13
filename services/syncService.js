@@ -1,6 +1,8 @@
 const cron = require('node-cron');
 const { getOutdatedProfiles, updateProfileData } = require('../repositories/externalProfile.repository');
 const { fetchPlatformData } = require('../services/externalProfile.service');
+const { getOrComputeStats } = require('../controllers/codingStats.controller');
+const { getOrComputeBadges } = require('../controllers/badges.controller');
 const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
 const startSyncService = () => {
@@ -31,6 +33,11 @@ const startSyncService = () => {
                     if (rawPlatformData) {
                         // Update DB including last_sync_at with raw data
                         await updateProfileData(profile.user_id, profile.platform, rawPlatformData);
+                        // Proactively compute stats and badges for this user (force refresh since profile data just updated)
+                        await Promise.all([
+                            getOrComputeStats(profile.user_id, true).catch(e => console.error(`[Sync Service] Stats compute error for user ${profile.user_id}:`, e.message)),
+                            getOrComputeBadges(profile.user_id, true).catch(e => console.error(`[Sync Service] Badges compute error for user ${profile.user_id}:`, e.message))
+                        ]);
                         console.log(`[Sync Service] Successfully synced profile for user ${profile.user_id} on ${profile.platform}.`);
                     } else {
                         console.log(`[Sync Service] Failed to fetch data for user ${profile.user_id} on ${profile.platform}.`);

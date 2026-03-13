@@ -24,7 +24,13 @@ const upsertCodingStatsCache = async (userId, stats) => {
     return rows[0];
 };
 
+const deleteCodingStatsCache = async (userId) => {
+    const query = 'DELETE FROM coding_stats WHERE user_id = $1;';
+    await pool.query(query, [userId]);
+};
+
 module.exports = {
     getCodingStatsCache,
-    upsertCodingStatsCache
+    upsertCodingStatsCache,
+    deleteCodingStatsCache
 };

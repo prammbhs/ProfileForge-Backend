@@ -60,12 +60,12 @@ const parseCodeforcesStats = (platformData, stats) => {
     });
 };
 
-const getOrComputeStats = async (userId) => {
+const getOrComputeStats = async (userId, forceRefresh = false) => {
     try {
         // 1. Check PostgreSQL Cache
         const cached = await getCodingStatsCache(userId);
 
-        if (cached) {
+        if (cached && !forceRefresh) {
             const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
             if (new Date(cached.last_synced_at) > twelveHoursAgo) {
                 return cached.stats; // Return fresh cached data
@@ -117,10 +117,8 @@ exports.getCodingStatsController = async (req, res) => {
     }
 };
 
-exports.getPublicCodingStats = async (userId) => {
-    try {
-        return await getOrComputeStats(userId);
-    } catch (error) {
-        return null; // Don't crash API keys fetching portfolio data
-    }
+module.exports = {
+    getCodingStatsController: exports.getCodingStatsController,
+    getPublicCodingStats: exports.getPublicCodingStats,
+    getOrComputeStats
 };

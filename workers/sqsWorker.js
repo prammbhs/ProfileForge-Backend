@@ -2,6 +2,8 @@ const { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } = require("@aws
 const { fetchPlatformData } = require("../services/externalProfile.service");
 const { updateProfileData } = require("../repositories/externalProfile.repository");
 const { deleteFileFromS3 } = require("../utils/s3");
+const { getOrComputeStats } = require("../controllers/codingStats.controller");
+const { getOrComputeBadges } = require("../controllers/badges.controller");
 
 const sqsClient = new SQSClient({
     region: process.env.REGION || "ap-south-1",
@@ -30,6 +32,11 @@ async function processMessage(message) {
             const rawPlatformData = await fetchPlatformData(platform, username);
             if (rawPlatformData) {
                 await updateProfileData(userId, platform.toLowerCase(), rawPlatformData);
+                // Proactively compute stats and badges (force refresh since profile data just updated)
+                await Promise.all([
+                    getOrComputeStats(userId, true).catch(e => console.error(`[SQS Worker] Stats compute error for user ${userId}:`, e.message)),
+                    getOrComputeBadges(userId, true).catch(e => console.error(`[SQS Worker] Badges compute error for user ${userId}:`, e.message))
+                ]);
                 console.log(`[SQS Worker] Successfully synced ${platform}:${username}`);
             } else {
                 console.warn(`[SQS Worker] No data returned for ${platform}:${username}`);

@@ -1,11 +1,11 @@
 const { pool } = require("../utils/postgreClient");
 const { getCachedBadges, upsertCachedBadges } = require("../repositories/badges.repository");
 
-const getOrComputeBadges = async (userId) => {
+const getOrComputeBadges = async (userId, forceRefresh = false) => {
     try {
         // 1. Check DB Cache
         const cached = await getCachedBadges(userId);
-        if (cached) {
+        if (cached && !forceRefresh) {
             const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
             if (new Date(cached.last_synced_at) > twelveHoursAgo) {
                 return cached.badges; // Fresh cache hit
@@ -62,10 +62,8 @@ exports.getBadgesController = async (req, res) => {
     }
 };
 
-exports.getPublicBadges = async (userId) => {
-    try {
-        return await getOrComputeBadges(userId);
-    } catch (error) {
-        return null; // Ensure this doesn't crash the unified API Key route
-    }
+module.exports = {
+    getBadgesController: exports.getBadgesController,
+    getPublicBadges: exports.getPublicBadges,
+    getOrComputeBadges
 };
