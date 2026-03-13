@@ -10,6 +10,10 @@ const { getUserCertificates } = require("../repositories/certificates.repository
 const { pool } = require("../utils/postgreClient");
 const { getPublicCodingStats } = require("../controllers/codingStats.controller");
 const { getPublicBadges } = require("../controllers/badges.controller");
+const { apiKeyCache } = require("../utils/lruCache");
+const { getRedisClient } = require("../utils/redisClient");
+
+const redis = getRedisClient();
 
 // Helper to generate an API key and its hashs
 const generateKey = () => {
@@ -73,6 +77,13 @@ exports.revokeApiKeyController = async (req, res) => {
         const revokedKey = await revokeApiKey(keyId, userId);
         if (!revokedKey) {
             return res.status(404).json({ error: "API Key not found or does not belong to user" });
+        }
+
+        // ── Invalidate Caches ──
+        const keyHash = revokedKey.key_hash;
+        if (keyHash) {
+            apiKeyCache.delete(keyHash); // Clear L1
+            redis.del(`api_key:${keyHash}`).catch(() => {}); // Clear L2
         }
 
         res.status(200).json({ message: "API Key revoked successfully" });
