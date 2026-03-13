@@ -131,7 +131,7 @@ exports.signup = async (req, res) => {
         res.json({ message: "User created successfully" });
     } catch (error) {
         console.log("cognito signup error", error.name, error.message);
-        res.status(400).json({ message: "Failed to create user" });
+        res.status(400).json({ error: error.name, message: error.message });
     }
 }
 
@@ -151,7 +151,7 @@ exports.confirmSignup = async (req, res) => {
         res.json({ message: "User confirmed successfully" });
     } catch (error) {
         console.log("cognito confirm signup error", error.name, error.message);
-        res.status(400).json({ message: "Failed to confirm user" });
+        res.status(400).json({ error: error.name, message: error.message });
     }
 }
 
@@ -170,7 +170,7 @@ exports.forgotPassword = async (req, res) => {
         res.json({ message: "Password reset code sent successfully" });
     } catch (error) {
         console.log("cognito forgot password error", error.name, error.message);
-        res.status(400).json({ message: "Failed to reset password" });
+        res.status(400).json({ error: error.name, message: error.message });
     }
 }
 //confirm forgot password function
@@ -190,7 +190,7 @@ exports.confirmForgotPassword = async (req, res) => {
         res.json({ message: "Password reset successfully" });
     } catch (error) {
         console.log("cognito confirm forgot password error", error.name, error.message);
-        res.status(400).json({ message: "Failed to reset password" });
+        res.status(400).json({ error: error.name, message: error.message });
     }
 }
 
