@@ -7,9 +7,29 @@ const app = express();
 app.set("trust proxy", 1); // Trust the first proxy (Nginx) to get correct client IPs
 
 // ── Middleware ────────────────────────────────────────────────────────────────
+// ── CORS Configuration ────────────────────────────────────────────────────────
+const allowedOrigins = [
+    process.env.FRONTEND_URL,
+    "https://profileforge.duckdns.org",
+    "http://localhost:5173"
+].filter(Boolean).flatMap(o => o.split(",")).map(o => o.trim().replace(/\/$/, ""));
+
 app.use(cors({
-    origin: [process.env.FRONTEND_URL, "https://profileforge.duckdns.org", "http://localhost:5173"],
-    credentials: true
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl)
+        if (!origin) return callback(null, true);
+        
+        const normalizedOrigin = origin.replace(/\/$/, "");
+        if (allowedOrigins.includes(normalizedOrigin)) {
+            callback(null, true);
+        } else {
+            console.warn(`[CORS] Rejected origin: ${origin}`);
+            callback(new Error("Not allowed by CORS"));
+        }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"]
 }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
