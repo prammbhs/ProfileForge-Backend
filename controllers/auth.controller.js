@@ -64,12 +64,14 @@ exports.login = async (req, res) => {
                 httpOnly: true,
                 secure: isProduction, 
                 sameSite: isProduction ? "none" : "lax",
+                partitioned: isProduction,
                 maxAge: 60 * 60 * 1000 // 1 hour in ms
             })
             .cookie("refreshToken", RefreshToken, {
                 httpOnly: true,
                 secure: isProduction,
                 sameSite: isProduction ? "none" : "lax",
+                partitioned: isProduction,
                 maxAge: 60 * 60 * 24 * 5 * 1000 // 5 days in ms
             })
             .json({
@@ -102,8 +104,8 @@ exports.logout = async (req, res) => {
         const isProduction = process.env.NODE_ENV === "production" || 
                            origin.includes("duckdns.org") || 
                            origin.includes("vercel.app");
-        res.clearCookie("accessToken", { sameSite: isProduction ? "none" : "lax", secure: isProduction });
-        res.clearCookie("refreshToken", { sameSite: isProduction ? "none" : "lax", secure: isProduction });
+        res.clearCookie("accessToken", { sameSite: isProduction ? "none" : "lax", secure: isProduction, partitioned: isProduction });
+        res.clearCookie("refreshToken", { sameSite: isProduction ? "none" : "lax", secure: isProduction, partitioned: isProduction });
         res.json({ message: "Logout successful" });
     } catch (error) {
         console.log("cognito logout error", error.name, error.message);

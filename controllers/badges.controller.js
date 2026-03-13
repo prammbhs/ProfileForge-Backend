@@ -13,29 +13,44 @@ const getOrComputeBadges = async (userId, forceRefresh = false) => {
         }
 
         // 2. Cache Miss or Expired: Compute from external_profiles
-        // Currently, we're relying predominantly on Credly for badges. 
-        const { rows: profiles } = await pool.query("SELECT platform, platform_data FROM external_profiles WHERE user_id = $1 AND platform = 'credly'", [userId]);
+        const { rows: profiles } = await pool.query(
+            "SELECT platform, platform_data FROM external_profiles WHERE user_id = $1 AND platform IN ('credly', 'leetcode')", 
+            [userId]
+        );
 
         const badgesMap = {};
+        let badgeCounter = 1;
 
         profiles.forEach(profile => {
             if (profile.platform === 'credly') {
                 const badgeArray = profile.platform_data?.data || [];
-
-                badgeArray.forEach((badge, index) => {
-                    // Map arrays into the specified keyed object format.
-                    // If the item lacks a distinct unique ID in the credly payload, 
-                    // user requested { id_1: { name, image, description, skills, issuer .. } } format.
-                    // We'll use a 1-based index (or fallback ID if available).
-                    const uniqueId = index + 1;
-
-                    badgesMap[uniqueId] = {
+                badgeArray.forEach((badge) => {
+                    badgesMap[badgeCounter++] = {
                         name: badge.badgeName || "Unknown Badge",
                         image: badge.imageUrl || "",
                         description: badge.description || "",
                         skills: badge.skills || [],
                         issuerName: badge.issuer || "",
                         issuerImageUrl: badge.issuerImageUrl || ""
+                    };
+                });
+            } else if (profile.platform === 'leetcode') {
+                const leetcodeData = profile.platform_data || {};
+                const badges = leetcodeData.badges || [];
+                
+                badges.forEach(badge => {
+                    let imageUrl = badge.icon || "";
+                    if (imageUrl && !imageUrl.startsWith('http')) {
+                        imageUrl = `https://leetcode.com${imageUrl}`;
+                    }
+
+                    badgesMap[badgeCounter++] = {
+                        name: badge.displayName || "LeetCode Achievement",
+                        image: imageUrl,
+                        description: "LeetCode Badge",
+                        skills: [],
+                        issuerName: "LeetCode",
+                        issuerImageUrl: "https://leetcode.com/static/images/LeetCode_logo_rvs.png"
                     };
                 });
             }
@@ -52,7 +67,7 @@ const getOrComputeBadges = async (userId, forceRefresh = false) => {
     }
 };
 
-exports.getBadgesController = async (req, res) => {
+const getBadgesController = async (req, res) => {
     try {
         const userId = req.user.internalId;
         const badges = await getOrComputeBadges(userId);
@@ -62,8 +77,16 @@ exports.getBadgesController = async (req, res) => {
     }
 };
 
+const getPublicBadges = async (userId) => {
+    try {
+        return await getOrComputeBadges(userId);
+    } catch (error) {
+        return null;
+    }
+};
+
 module.exports = {
-    getBadgesController: exports.getBadgesController,
-    getPublicBadges: exports.getPublicBadges,
+    getBadgesController,
+    getPublicBadges,
     getOrComputeBadges
 };

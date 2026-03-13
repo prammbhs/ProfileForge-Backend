@@ -107,7 +107,7 @@ const getOrComputeStats = async (userId, forceRefresh = false) => {
     }
 };
 
-exports.getCodingStatsController = async (req, res) => {
+const getCodingStatsController = async (req, res) => {
     try {
         const userId = req.user.internalId;
         const stats = await getOrComputeStats(userId);
@@ -117,8 +117,16 @@ exports.getCodingStatsController = async (req, res) => {
     }
 };
 
+const getPublicCodingStats = async (userId) => {
+    try {
+        return await getOrComputeStats(userId);
+    } catch (error) {
+        return null;
+    }
+};
+
 module.exports = {
-    getCodingStatsController: exports.getCodingStatsController,
-    getPublicCodingStats: exports.getPublicCodingStats,
+    getCodingStatsController,
+    getPublicCodingStats,
     getOrComputeStats
 };
