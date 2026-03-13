@@ -11,7 +11,8 @@ app.set("trust proxy", 1); // Trust the first proxy (Nginx) to get correct clien
 const allowedOrigins = [
     process.env.FRONTEND_URL,
     "https://profileforge.duckdns.org",
-    "http://localhost:5173"
+    "http://localhost:5173",
+    "https://profile-forge-two.vercel.app"
 ].filter(Boolean).flatMap(o => o.split(",")).map(o => o.trim().replace(/\/$/, ""));
 
 app.use(cors({
@@ -20,11 +21,15 @@ app.use(cors({
         if (!origin) return callback(null, true);
         
         const normalizedOrigin = origin.replace(/\/$/, "");
-        if (allowedOrigins.includes(normalizedOrigin)) {
+        const isVercel = /\.vercel\.app$/.test(normalizedOrigin);
+        const isDuckDns = /\.duckdns\.org$/.test(normalizedOrigin);
+        
+        if (allowedOrigins.includes(normalizedOrigin) || isVercel || isDuckDns) {
             callback(null, true);
         } else {
             console.warn(`[CORS] Rejected origin: ${origin}`);
-            callback(new Error("Not allowed by CORS"));
+            // Just return false instead of an error to prevent 500 crash in some middleware setups
+            callback(null, false);
         }
     },
     credentials: true,

@@ -54,7 +54,10 @@ exports.login = async (req, res) => {
         
         authCache.set(attributes.sub, user.id); // Prime L1
         redis.setex(`auth_sub:${attributes.sub}`, 86400, user.id).catch(() => {}); // Prime L2
-        const isProduction = process.env.NODE_ENV === "production" || req.get("host").includes("duckdns.org") || req.get("host").includes("vercel.app");
+        const origin = req.get("origin") || "";
+        const isProduction = process.env.NODE_ENV === "production" || 
+                           origin.includes("duckdns.org") || 
+                           origin.includes("vercel.app");
 
         res
             .cookie("accessToken", AccessToken, {
@@ -95,7 +98,10 @@ exports.logout = async (req, res) => {
             AccessToken: token
         });
         await cognitoClient.send(command);
-        const isProduction = process.env.NODE_ENV === "production" || req.get("host").includes("duckdns.org") || req.get("host").includes("vercel.app");
+        const origin = req.get("origin") || "";
+        const isProduction = process.env.NODE_ENV === "production" || 
+                           origin.includes("duckdns.org") || 
+                           origin.includes("vercel.app");
         res.clearCookie("accessToken", { sameSite: isProduction ? "none" : "lax", secure: isProduction });
         res.clearCookie("refreshToken", { sameSite: isProduction ? "none" : "lax", secure: isProduction });
         res.json({ message: "Logout successful" });
