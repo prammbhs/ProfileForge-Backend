@@ -12,29 +12,51 @@ const allowedOrigins = [
     process.env.FRONTEND_URL,
     "https://profileforge.duckdns.org",
     "http://localhost:5173",
-    "https://profile-forge-two.vercel.app"
+    "https://profile-forge-two.vercel.app",
+
 ].filter(Boolean).flatMap(o => o.split(",")).map(o => o.trim().replace(/\/$/, ""));
 
-app.use(cors({
-    origin: (origin, callback) => {
-        // Allow requests with no origin (like mobile apps or curl)
-        if (!origin) return callback(null, true);
+app.use(cors((req, callback) => {
+    let corsOptions = {
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "x-api-key"]
+    };
 
-        const normalizedOrigin = origin.replace(/\/$/, "");
-        const isVercel = /\.vercel\.app$/.test(normalizedOrigin);
-        const isDuckDns = /\.duckdns\.org$/.test(normalizedOrigin);
+    // Allow public access to specific API endpoints
+    const publicApiPaths = [
+        "/api/v1/keys/data",
+        "/api/v1/keys/projects",
+        "/api/v1/keys/stats",
+        "/api/v1/keys/certificates",
+        "/api/v1/keys/badges",
+        "/api/v1/keys/platforms"
+    ];
 
-        if (allowedOrigins.includes(normalizedOrigin) || isVercel || isDuckDns) {
-            callback(null, true);
-        } else {
-            console.warn(`[CORS] Rejected origin: ${origin}`);
-            // Just return false instead of an error to prevent 500 crash in some middleware setups
-            callback(null, false);
-        }
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"]
+    if (req.originalUrl && publicApiPaths.some(path => req.originalUrl.startsWith(path))) {
+        corsOptions.origin = true; // Allow all origins for API endpoints
+        return callback(null, corsOptions);
+    }
+
+    const origin = req.header('Origin');
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) {
+        corsOptions.origin = true;
+        return callback(null, corsOptions);
+    }
+
+    const normalizedOrigin = origin.replace(/\/$/, "");
+    const isVercel = /\.vercel\.app$/.test(normalizedOrigin);
+    const isDuckDns = /\.duckdns\.org$/.test(normalizedOrigin);
+
+    if (allowedOrigins.includes(normalizedOrigin) || isVercel || isDuckDns) {
+        corsOptions.origin = true;
+    } else {
+        console.warn(`[CORS] Rejected origin: ${origin}`);
+        corsOptions.origin = false;
+    }
+
+    callback(null, corsOptions);
 }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
