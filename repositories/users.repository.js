@@ -61,10 +61,25 @@ const deleteUser = async (id) => {
     const { rows } = await pool.query(deleteQuery, values);
     return rows[0] || null;
 };
+
+const updateEmail = async (id, email) => {
+    const updateQuery = `
+        UPDATE users
+        SET email = $1
+        WHERE id = $2
+        RETURNING *;
+    `;
+    const values = [email, id];
+
+    const { rows } = await pool.query(updateQuery, values);
+    return rows[0] || null;
+};
+
 module.exports = {
     createUser,
     getUserByCognitoSub,
     updateProfileImage,
     updateName,
-    deleteUser
+    deleteUser,
+    updateEmail
 };

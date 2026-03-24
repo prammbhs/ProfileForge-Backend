@@ -1,5 +1,5 @@
-const { getUserByCognitoSub, updateProfileImage, updateName, deleteUser } = require("../repositories/users.repository");
-const { DeleteUserCommand } = require("@aws-sdk/client-cognito-identity-provider");
+const { getUserByCognitoSub, updateProfileImage, updateName, deleteUser, updateEmail: updateEmailRepo } = require("../repositories/users.repository");
+const { DeleteUserCommand, UpdateUserAttributesCommand } = require("@aws-sdk/client-cognito-identity-provider");
 const cognitoClient = require("../utils/cognito");
 
 exports.getUser = async (req, res) => {
@@ -58,5 +58,29 @@ exports.deleteUser = async (req, res) => {
     } catch (error) {
         console.log("cognito delete user error", error.name, error.message);
         res.status(401).json({ message: "Failed to delete user" });
+    }
+}
+
+exports.updateEmail = async (req, res) => {
+    try {
+        const currentUser = await getUserByCognitoSub(req.user.sub);
+        if (!currentUser) return res.status(404).json({ message: "User not found" });
+
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ message: "Email is required" });
+
+        // Update Cognito
+        const command = new UpdateUserAttributesCommand({
+            AccessToken: req.cookies.accessToken,
+            UserAttributes: [{ Name: 'email', Value: email }]
+        });
+        await cognitoClient.send(command);
+
+        // Update local DB
+        const updatedUser = await updateEmailRepo(currentUser.id, email);
+        res.json(updatedUser);
+    } catch (error) {
+        console.log("updateEmail error", error.name, error.message);
+        res.status(500).json({ message: error.message || "Failed to update email" });
     }
 }
