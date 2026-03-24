@@ -16,14 +16,24 @@ exports.getUser = async (req, res) => {
 
 exports.updateProfileImage = async (req, res) => {
     try {
-
         const currentUser = await getUserByCognitoSub(req.user.sub);
         if (!currentUser) return res.status(404).json({ message: "User not found" });
-        const updatedUser = await updateProfileImage(currentUser.id, req.file.path);
+
+        if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+
+        const { uploadFileToS3 } = require("../utils/s3");
+        const path = require("path");
+
+        const fileKey = `profiles/${currentUser.id}-${Date.now()}${path.extname(req.file.originalname)}`;
+        
+        // Upload to S3 and save the returned CDN url
+        const cdnUrl = await uploadFileToS3(req.file.path, fileKey, req.file.mimetype);
+        const updatedUser = await updateProfileImage(currentUser.id, cdnUrl);
+        
         res.json(updatedUser);
     } catch (error) {
         console.log("user controller error", error.name, error.message);
-        res.status(500).json({ message: "Failed to update profile image" });
+        res.status(500).json({ message: "Failed to upload profile image to S3" });
     }
 }
 

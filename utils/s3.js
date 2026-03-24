@@ -63,8 +63,36 @@ const deleteFileFromS3 = async (fileUrl) => {
     }
 };
 
+const uploadFileToS3 = async (filePath, fileKey, contentType) => {
+    const fs = require('fs');
+    const bucketName = process.env.AWS_S3_BUCKET_NAME;
+    const cloudfrontUrl = process.env.AWS_CLOUDFRONT_URL;
+
+    if (!bucketName) {
+        throw new Error("AWS_S3_BUCKET_NAME environment variable is not defined.");
+    }
+
+    const fileBuffer = fs.readFileSync(filePath);
+
+    const command = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: fileKey,
+        Body: fileBuffer,
+        ContentType: contentType
+    });
+
+    await s3Client.send(command);
+    
+    // Cleanup local file after successful upload
+    try { fs.unlinkSync(filePath); } catch (e) { console.error("Temp file cleanup failed:", e); }
+
+    const sanitizedDomain = cloudfrontUrl ? cloudfrontUrl.replace(/\/$/, "") : `https://${bucketName}.s3.${process.env.REGION || 'ap-south-1'}.amazonaws.com`;
+    return `${sanitizedDomain}/${fileKey}`;
+};
+
 module.exports = {
     s3Client,
     generatePresignedUploadUrl,
-    deleteFileFromS3
+    deleteFileFromS3,
+    uploadFileToS3
 };
