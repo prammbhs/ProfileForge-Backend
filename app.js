@@ -12,7 +12,7 @@ const allowedOrigins = [
     process.env.FRONTEND_URL,
     "https://profileforge.duckdns.org",
     "http://localhost:5173",
-    "https://profile-forge-two.vercel.app",
+    "https://profileforge.paramjit.tech",
 
 ].filter(Boolean).flatMap(o => o.split(",")).map(o => o.trim().replace(/\/$/, ""));
 
