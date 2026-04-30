@@ -1,7 +1,6 @@
 const Redis = require("ioredis");
 
-// Singleton shared Redis client for all application use (caching, rate limiting, etc.)
-// This prevents each file from creating its own connection.
+// Singleton shared Redis client for all application use
 let sharedClient = null;
 
 const getRedisClient = () => {

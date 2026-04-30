@@ -34,7 +34,7 @@ app.use(cors((req, callback) => {
     ];
 
     if (req.originalUrl && publicApiPaths.some(path => req.originalUrl.startsWith(path))) {
-        corsOptions.origin = true; // Allow all origins for API endpoints
+        corsOptions.origin = true;
         return callback(null, corsOptions);
     }
 

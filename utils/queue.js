@@ -19,12 +19,12 @@ const s3JobQueue = new Queue("S3Jobs", {
     defaultJobOptions: {
         removeOnComplete: true,
         removeOnFail: {
-            age: 24 * 3600 // Keep failed jobs for 1 day for manual inspection if needed
+            age: 24 * 3600
         },
-        attempts: 3, // Retry failed deletions
+        attempts: 3,
         backoff: {
             type: 'exponential',
-            delay: 5000 // 5s, 10s, 20s
+            delay: 5000
         }
     }
 });

@@ -25,10 +25,10 @@ const connectDB = async () => {
     try {
         const client = await pool.connect();
         const res = await client.query("SELECT version()");
-        console.log("✅ PostgreSQL connected:", res.rows[0].version);
+        console.log(" PostgreSQL connected:", res.rows[0].version);
         client.release();
     } catch (error) {
-        console.error("❌ PostgreSQL connection failed:", error.message);
+        console.error(" PostgreSQL connection failed:", error.message);
         process.exit(1);
     }
 };

@@ -11,7 +11,7 @@ const fetchPlatformData = async (platform, username) => {
 
             return {
                 profile: githubData,
-                events: [] // Keep empty array format just in case frontend still expects it
+                events: []
             };
         case 'leetcode':
             return await getLeetcodeUserdata(username);
